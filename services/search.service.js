@@ -13,7 +13,7 @@ async function searchWeb(query) {
       }
     );
 
-    return res.data.organic.map(r => r.link).slice(0, 5);
+    return res.data.organic.map(r => r.link).slice(0, 3);
   } catch (err) {
     console.error("Search failed:", err.response?.status);
 

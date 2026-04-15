@@ -3,6 +3,17 @@ const { extractContent } = require('./scrape.service');
 const { chunkText } = require('../utils/chunk.util');
 const { callLLM } = require('./llm.service');
 
+function scoreChunk(chunk, query) {
+  const words = query.toLowerCase().split(' ');
+  let score = 0;
+
+  words.forEach(w => {
+    if (chunk.toLowerCase().includes(w)) score++;
+  });
+
+  return score;
+}
+
 async function runResearchPipeline(query) {
   console.log("🔍 Query:", query);
 
@@ -29,22 +40,40 @@ async function runResearchPipeline(query) {
   chunks = chunks.slice(0, 5);
 
   // 4. summarize (tiny model)
-  const summaries = await Promise.all(
-    chunks.map(chunk =>
-      callLLM('tinyllama', `Summarize:\n${chunk}`)
-    )
-  );
+  // const summaries = await Promise.all(
+  //   chunks.map(chunk =>
+  //     callLLM('tinyllama', `Summarize:\n${chunk}`)
+  //   )
+  // );
 
-  console.log("summaries", summaries)
+  // console.log("summaries", summaries)
 
   // 5. final answer (mistral)
+
+  chunks = chunks
+  .map(c => ({ text: c, score: scoreChunk(c, query) }))
+  .sort((a, b) => b.score - a.score)
+  .slice(0, 5)
+  .map(c => c.text);
+
+  const context = chunks.join('\n\n');
+
   const finalPrompt = `
-Answer the question using the context below:
+    You are a precise and factual research assistant.
 
-${summaries.join('\n')}
+    Instructions:
+    - Answer using ONLY the provided context
+    - Be detailed and structured
+    - If context is insufficient, say "Not enough information"
 
-Question: ${query}
-`;
+    Context:
+    ${context}
+
+    Question:
+    ${query}
+
+    Answer:
+    `;
 
   const answer = await callLLM('mistral', finalPrompt);
 

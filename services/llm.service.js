@@ -5,7 +5,12 @@ async function callLLM(model, prompt) {
     body: JSON.stringify({
       model,
       prompt,
-      stream: false
+      stream: false,
+      options: {
+        num_predict: 500,   // 🔥 increase output size
+        temperature: 0.2,   // factual
+        top_p: 0.9
+      }
     })
   });
 
